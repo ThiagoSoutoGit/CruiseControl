@@ -2,7 +2,7 @@
 
 This repository contains the Esterel implementation for a simple cruise control system for a vehicle.
 
-![Cruise Control System](./Figures/CruiseControl-Context.png)
+![Cruise Control System](./Figures/CruiseControl - Context.png)
 
 ## Overview
 
