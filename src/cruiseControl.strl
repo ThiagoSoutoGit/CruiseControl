@@ -3,8 +3,8 @@ module CruiseControl:
 %Inputs
 input On;
 input Off;
-input Resume;
 input Set;
+input Resume;
 input QuickAccel;
 input QuickDecel;
 input Accel : float;
