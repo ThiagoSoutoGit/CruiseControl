@@ -1,66 +1,58 @@
 module CruiseControl:
 
 %Inputs
-input On;
-input Off;
-input Set;
-input Resume;
-input QuickAccel;
-input QuickDecel;
-input Accel : float;
-input Brake : float;
-input Speed : float;
+input On; % This input turns the cruise control on
+input Off; % This input turns the cruise control off
+input Set; % This input sets the current speed as the cruising speed
+input Resume; % This input resumes the cruising speed after it was interrupted by braking or accelerating
+input QAccel; % This input causes the cruising speed to quickly increase
+input QDecel; % This input causes the cruising speed to quickly decrease
+input Accel : float; % This input represents the current acceleration
+input Brake : float; % This input represents the current brake force
+input Speed : float; % This input represents the current speed
 
 %Outputs
-output CruiseSpeed : float;
-output ThrottleCmd : float;
-output CruiseState : integer; % 0 = OFF; 1 = ON; 2 = STDBY; 3 = DISABLE;
+output CruiseSpeed : float; % This output is the current cruising speed
+output ThrottleCmd : float; % This output is the command to the throttle
+output CruiseState : integer; % This output represents the current state of the cruise control: 0 = OFF, 1 = ON, 2 = STANDBY, 3 = DISABLE
 
 %Internal Signals
-signal WithinSpeedLimit in
-signal AccelPressed in
-signal BrakePressed in
+signal SpeedLimit in % This internal signal is emitted if the speed is within the predefined speed limits
+signal AccelPressed in % This internal signal is emitted if the accelerator is being pressed
+signal BrakePressed in % This internal signal is emitted if the brake is being pressed
 
-
-run SpeedLimitCheck [
+run VehicleStatusCheck [ % This module checks brakes, speed and acceleration
 	signal Speed/Speed;
-	signal WithinSpeedLimit/WithinSpeedLimit
-]
-||
-run BrakeCheck [
+	signal SpeedLimit/SpeedLimit;
     signal Brake/Brake;
-    signal BrakePressed/BrakePressed
-]
-||
-run AccelCheck [
+    signal BrakePressed/BrakePressed;
     signal Accel/Accel;
     signal AccelPressed/AccelPressed
 ]
 ||
-run CruiseSpeedController [
+run CruiseSpeedController [ % This module controls the cruising speed based on inputs
     signal CruiseState/CruiseState;
-    signal QuickAccel/QuickAccel;
-    signal QuickDecel/QuickDecel;
+    signal QAccel/QAccel;
+    signal QDecel/QDecel;
     signal Set/Set;
     signal Speed/Speed;
     signal CruiseSpeed/CruiseSpeed
-
 ]
 ||
-run ThrottleController [
+run ThrottleController [ % This module controls the throttle based on the current cruise state and speed
     signal CruiseState/CruiseState;
     signal CruiseSpeed/CruiseSpeed;
     signal Accel/Accel;
     signal Speed/Speed
 ]
 ||
-run CruiseStateController [
+run CruiseStateController [ % This module controls the state of the cruise control based on inputs
     signal On/On;
     signal Off/Off;
     signal Resume/Resume;
     signal AccelPressed/AccelPressed;
     signal BrakePressed/BrakePressed;
-    signal WithinSpeedLimit/WithinSpeedLimit
+    signal SpeedLimit/SpeedLimit
 ]
 end signal;
 end signal;
@@ -77,7 +69,7 @@ input Off;
 input Resume;
 input AccelPressed;
 input BrakePressed;
-input WithinSpeedLimit;
+input SpeedLimit;
 
 %Outputs
 output CruiseState : integer; % 1 = OFF; 2 = ON; 3 = STDBY; 4 = DISABLE;
@@ -87,7 +79,7 @@ loop
     emit CruiseState(state);
     await tick;
     if state = 1 then
-        present (On and not(Off) and WithinSpeedLimit) then
+        present (On and not(Off) and SpeedLimit) then
             state := 2;            
         end present;
 
@@ -98,7 +90,7 @@ loop
         present (BrakePressed and not(Off)) then
             state := 3;
         end present;
-        present ((AccelPressed or not(WithinSpeedLimit)) and not(Off) and not(BrakePressed)) then
+        present ((AccelPressed or not(SpeedLimit)) and not(Off) and not(BrakePressed)) then
             state := 4;
         end present;
 
@@ -106,10 +98,10 @@ loop
         present (Off) then
             state := 1;
         end present;
-        present (Resume and WithinSpeedLimit and not(BrakePressed) and not(AccelPressed) and not(Off)) then
+        present (Resume and SpeedLimit and not(BrakePressed) and not(AccelPressed) and not(Off)) then
             state := 2;
         end present;
-        present (Resume and WithinSpeedLimit and not(BrakePressed) and AccelPressed and not(Off)) then
+        present (Resume and SpeedLimit and not(BrakePressed) and AccelPressed and not(Off)) then
             state := 4;
         end present;
 
@@ -117,7 +109,7 @@ loop
         present (Off) then
             state := 1;
         end present;
-        present (not(AccelPressed) and WithinSpeedLimit and not(Off)) then
+        present (not(AccelPressed) and SpeedLimit and not(Off)) then
             state := 2;
         end present;
     end if;
@@ -132,8 +124,8 @@ module CruiseSpeedController:
 
 %Inputs
 input CruiseState : integer;
-input QuickAccel;
-input QuickDecel;
+input QAccel;
+input QDecel;
 input Set;
 input Speed : float;
 
@@ -158,14 +150,14 @@ loop
         present (Set) then
             CurrentSpeed := ?Speed;
         end present;
-        present (QuickDecel and not(Set)) then
+        present (QDecel and not(Set)) then
             if (CurrentSpeed - SpeedInc > SpeedMin) then
                 CurrentSpeed := CurrentSpeed - SpeedInc;
             else
                 CurrentSpeed := SpeedMin;
             end if;
         end present;
-        present (QuickAccel and not(Set)) then
+        present (QAccel and not(Set)) then
             if (CurrentSpeed + SpeedInc < SpeedMax) then
                 CurrentSpeed := CurrentSpeed + SpeedInc;
             else
@@ -207,49 +199,42 @@ loop
 end loop;
 end module
 
+%Module to check if speed is within limits, brake is pressed, and accelerator is pressed
+module VehicleStatusCheck:
 
-%Module to check if brake is pressed
-module BrakeCheck:
-input Brake : float;
-output BrakePressed;
-constant PedalMin = 3.0f : float;
+%Inputs
+input Speed: float;
+input Accel: float;
+input Brake: float;
 
-loop
-    await tick;
-    if (?Brake > PedalMin) then
-        emit BrakePressed;
-    end if;
-end loop;
-end module
-
-%Module to check if accelerator is pressed
-module AccelCheck:
-input Accel : float;
+%Outputs
+output SpeedLimit;
 output AccelPressed;
-constant PedalMin = 3.0f : float;
+output BrakePressed;
 
-loop
-    await tick;
-    if (?Accel > PedalMin) then
-        emit AccelPressed;
-    end if;
-end loop;
-end module
-
-
-%Module to check if speed is within SpeedMin & SpeedMax
-module SpeedLimitCheck:
-
+% Constants for speed limit and pedal press minimum
 constant SpeedMin = 30.0f : float;
 constant SpeedMax = 150.0f : float;
-input Speed: float;
-output WithinSpeedLimit;
+constant PedalMin = 3.0f : float;
 
 loop
 	await tick;
+
+	% Check if speed is within the limits
 	if ((?Speed < SpeedMax) and (?Speed > SpeedMin)) then
-		emit WithinSpeedLimit;
+		emit SpeedLimit;
+	end if;
+
+	% Check if brake is being pressed
+	if (?Brake > PedalMin) then
+		emit BrakePressed;
+	end if;
+
+	% Check if accelerator is being pressed
+	if (?Accel > PedalMin) then
+		emit AccelPressed;
 	end if;
 end loop
 end module
+
 
