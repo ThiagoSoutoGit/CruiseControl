@@ -67,3 +67,4 @@ float regulateThrottle(bool isGoingOn, float cruiseSpeed, float vehicleSpeed)
 	// Return the saturated throttle value
 	return saturateThrottle(proportionalAction + integralAction, &saturate);
 }
+

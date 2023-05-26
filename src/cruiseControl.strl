@@ -27,15 +27,6 @@ run SpeedLimitCheck [
 	signal WithinSpeedLimit/WithinSpeedLimit
 ]
 ||
-run CruiseStateController [
-    signal On/On;
-    signal Off/Off;
-    signal Resume/Resume;
-    signal AccelPressed/AccelPressed;
-    signal BrakePressed/BrakePressed;
-    signal WithinSpeedLimit/WithinSpeedLimit
-]
-||
 run BrakeCheck [
     signal Brake/Brake;
     signal BrakePressed/BrakePressed
@@ -62,7 +53,15 @@ run ThrottleController [
     signal Accel/Accel;
     signal Speed/Speed
 ]
-
+||
+run CruiseStateController [
+    signal On/On;
+    signal Off/Off;
+    signal Resume/Resume;
+    signal AccelPressed/AccelPressed;
+    signal BrakePressed/BrakePressed;
+    signal WithinSpeedLimit/WithinSpeedLimit
+]
 end signal;
 end signal;
 end signal;
