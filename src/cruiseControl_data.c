@@ -38,8 +38,8 @@ inline float saturateThrottle(float throttleIn, bool* restrict saturate)
 float regulateThrottle(bool isGoingOn, float cruiseSpeed, float vehicleSpeed)
 {
 	// Define proportional and integral gains
-	static const float KP = 8.113;
-	static const float KI = 0.5;
+	static const float KP = 9.215;
+	static const float KI = 0.55;
 
 	// Declare static variables for saturation status and integral term
 	static bool saturate = true;
